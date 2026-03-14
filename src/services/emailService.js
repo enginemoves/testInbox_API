@@ -68,7 +68,7 @@ async function createInbox(email, ttlHours = DEFAULT_TTL_HOURS) {
 }
 
 // Get all emails in an inbox
-async function getEmails(email) {
+async function getEmails(email, includeBody = true) {
   // Check inbox exists and not expired
   const { data: inbox, error: inboxError } = await supabase
     .from('inboxes')
@@ -100,14 +100,15 @@ async function getEmails(email) {
       subject: msg.subject,
       from: msg.from_address,
       receivedAt: msg.received_at,
-      body: msg.body,
+      code: msg.otp_code || null,
       links: msg.links || [],
+      body: includeBody ? msg.body : null,
     })),
   };
 }
 
 // Get a specific email message
-async function getMessage(email, messageId) {
+async function getMessage(email, messageId, includeBody = true) {
   const { data: inbox } = await supabase
     .from('inboxes')
     .select('*')
@@ -129,9 +130,9 @@ async function getMessage(email, messageId) {
     id: message.id,
     subject: message.subject,
     from: message.from_address,
-    body: message.body,
-    code: message.otp_code,
+    code: message.otp_code || null,
     links: message.links || [],
+    body: includeBody ? message.body : null,
     receivedAt: message.received_at,
   };
 }
@@ -186,13 +187,17 @@ async function deleteInbox(email) {
     .delete()
     .eq('inbox_id', inbox.id);
 
-  // Delete inbox
+  // Delete inbox from DB
   const { error } = await supabase
     .from('inboxes')
     .delete()
     .eq('id', inbox.id);
 
   if (error) throw new Error(error.message);
+
+  // Clear Redis cache so next createInbox call starts fresh
+  await redis.del(`inbox:${email}`);
+  await redis.del(`lastmail:${email}`);
 
   return { status: 'success', message: 'Inbox deleted successfully' };
 }

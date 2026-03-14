@@ -17,11 +17,12 @@ async function createInbox(req, res) {
   }
 }
 
-// GET /emails/:email
+// GET /emails/:email?includeBody=false
 async function getEmails(req, res) {
   try {
     const { email } = req.params;
-    const result = await emailService.getEmails(email);
+    const includeBody = req.query.includeBody !== 'false';
+    const result = await emailService.getEmails(email, includeBody);
     return res.status(200).json(result);
 
   } catch (error) {
@@ -29,11 +30,12 @@ async function getEmails(req, res) {
   }
 }
 
-// GET /emails/:email/:messageId
+// GET /emails/:email/:messageId?includeBody=false
 async function getMessage(req, res) {
   try {
     const { email, messageId } = req.params;
-    const result = await emailService.getMessage(email, messageId);
+    const includeBody = req.query.includeBody !== 'false';
+    const result = await emailService.getMessage(email, messageId, includeBody);
     return res.status(200).json(result);
 
   } catch (error) {
