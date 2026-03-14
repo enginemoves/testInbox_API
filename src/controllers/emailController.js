@@ -3,13 +3,14 @@ const emailService = require('../services/emailService');
 // POST /emails
 async function createInbox(req, res) {
   try {
-    const { email, timeToLive } = req.body;
+    const { email, timeToLive, includeBody } = req.body;
 
     if (!email) {
       return res.status(400).json({ status: 'error', message: 'Email is required' });
     }
 
-    const result = await emailService.createInbox(email, timeToLive || 2);
+    const bodyPref = includeBody === false ? false : true;
+    const result = await emailService.createInbox(email, timeToLive || 2, bodyPref);
     return res.status(201).json(result);
 
   } catch (error) {

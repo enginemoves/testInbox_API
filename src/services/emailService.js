@@ -7,7 +7,7 @@ const MAX_TTL_HOURS = 10;
 const DOMAIN = process.env.DOMAIN || 'testinbox.icu';
 
 // Create or return existing inbox
-async function createInbox(email, ttlHours = DEFAULT_TTL_HOURS) {
+async function createInbox(email, ttlHours = DEFAULT_TTL_HOURS, includeBody = true) {
   // Validate email domain
   if (!email.endsWith(`@${DOMAIN}`)) {
     throw new Error(`Email must use @${DOMAIN} domain`);
@@ -26,6 +26,7 @@ async function createInbox(email, ttlHours = DEFAULT_TTL_HOURS) {
       inboxId: cached.id,
       timeToLive: `${hours} hour(s)`,
       expiresAt: cached.expires_at,
+      includeBody: cached.include_body,
     };
   }
 
@@ -37,20 +38,20 @@ async function createInbox(email, ttlHours = DEFAULT_TTL_HOURS) {
     .single();
 
   if (existing) {
-    // Cache it in Redis
     await redis.set(`inbox:${email}`, existing, { ex: hours * 3600 });
     return {
       email: existing.email,
       inboxId: existing.id,
       timeToLive: `${hours} hour(s)`,
       expiresAt: existing.expires_at,
+      includeBody: existing.include_body,
     };
   }
 
   // Create new inbox
   const { data, error } = await supabase
     .from('inboxes')
-    .insert([{ email, expires_at: expiresAt.toISOString() }])
+    .insert([{ email, expires_at: expiresAt.toISOString(), include_body: includeBody }])
     .select()
     .single();
 
@@ -64,11 +65,12 @@ async function createInbox(email, ttlHours = DEFAULT_TTL_HOURS) {
     inboxId: data.id,
     timeToLive: `${hours} hour(s)`,
     expiresAt: data.expires_at,
+    includeBody: data.include_body,
   };
 }
 
 // Get all emails in an inbox
-async function getEmails(email, includeBody = true) {
+async function getEmails(email, includeBodyOverride = null) {
   // Check inbox exists and not expired
   const { data: inbox, error: inboxError } = await supabase
     .from('inboxes')
@@ -83,6 +85,9 @@ async function getEmails(email, includeBody = true) {
   if (new Date(inbox.expires_at) < new Date()) {
     throw new Error('Inbox has expired');
   }
+
+  // Use override if provided, otherwise use inbox preference
+  const includeBody = includeBodyOverride !== null ? includeBodyOverride : inbox.include_body;
 
   // Get messages
   const { data: messages, error } = await supabase
@@ -108,7 +113,7 @@ async function getEmails(email, includeBody = true) {
 }
 
 // Get a specific email message
-async function getMessage(email, messageId, includeBody = true) {
+async function getMessage(email, messageId, includeBodyOverride = null) {
   const { data: inbox } = await supabase
     .from('inboxes')
     .select('*')
@@ -116,6 +121,8 @@ async function getMessage(email, messageId, includeBody = true) {
     .single();
 
   if (!inbox) throw new Error('Inbox not found');
+
+  const includeBody = includeBodyOverride !== null ? includeBodyOverride : inbox.include_body;
 
   const { data: message, error } = await supabase
     .from('messages')
