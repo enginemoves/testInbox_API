@@ -1,0 +1,23 @@
+{
+  "name": "testinbox",
+  "version": "1.0.0",
+  "description": "Temporary Email API Service for QA and developers",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "@upstash/redis": "^1.28.0",
+    "@upstash/ratelimit": "^1.2.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "node-cron": "^3.0.3",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
